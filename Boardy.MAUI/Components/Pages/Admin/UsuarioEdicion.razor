@@ -1,0 +1,115 @@
+@page "/admin/usuarios/{UsuarioId}"
+@inject UsuarioServicio UsuarioServicio
+@inject SesionServicio Sesion
+@inject NavigationManager Navegacion
+
+<Encabezado Titulo="Editar usuario" Volver="admin/usuarios" />
+
+<MensajeError Texto="@_error" />
+@if (_aviso is not null)
+{
+    <div class="alert alert-success py-2">@_aviso</div>
+}
+
+@if (_usuario is not null)
+{
+    <EditForm Model="_modelo" OnValidSubmit="GuardarAsync">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="_modelo.Nombre" />
+            <ValidationMessage For="() => _modelo.Nombre" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Apellido</label>
+            <InputText class="form-control" @bind-Value="_modelo.Apellido" />
+            <ValidationMessage For="() => _modelo.Apellido" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Correo electrónico</label>
+            <InputText class="form-control" type="email" @bind-Value="_modelo.Email" />
+            <ValidationMessage For="() => _modelo.Email" />
+        </div>
+        <div class="mb-4">
+            <label class="form-label">Nueva contraseña</label>
+            <InputText class="form-control" type="password" placeholder="Dejala vacía para no cambiarla" @bind-Value="_modelo.NuevaContrasena" autocomplete="new-password" />
+            <ValidationMessage For="() => _modelo.NuevaContrasena" />
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Guardar</button>
+    </EditForm>
+
+    @if (!EsUnoMismo)
+    {
+        <div class="seccion mt-4">
+            <h2>Acceso</h2>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span>Cuenta @(_usuario.Activo ? "activa" : "inactiva")</span>
+                <button class="btn btn-sm @(_usuario.Activo ? "btn-outline-danger" : "btn-outline-light")" @onclick="AlternarEstadoAsync">
+                    @(_usuario.Activo ? "Desactivar" : "Activar")
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span>@(_usuario.EsAdministrador ? "Administrador de la plataforma" : "Usuario común")</span>
+                <button class="btn btn-sm btn-outline-light" @onclick="AlternarAdministradorAsync">
+                    @(_usuario.EsAdministrador ? "Quitar admin" : "Hacer admin")
+                </button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public string UsuarioId { get; set; } = string.Empty;
+
+    private UsuarioAdministracionDto? _usuario;
+    private EditarUsuarioDto _modelo = new();
+    private string? _error;
+    private string? _aviso;
+
+    // Nadie puede desactivarse ni cambiar su propio rol global (regla del backend).
+    private bool EsUnoMismo => UsuarioId == Sesion.Usuario?.UsuarioId;
+
+    protected override async Task OnInitializedAsync() => await CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        var resultado = await UsuarioServicio.ObtenerAsync(UsuarioId);
+        _error = resultado.Error;
+        _usuario = resultado.Datos;
+        if (_usuario is not null)
+        {
+            _modelo = new EditarUsuarioDto { Nombre = _usuario.Nombre, Apellido = _usuario.Apellido, Email = _usuario.Email };
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        // Un texto vacío significa "no cambiar la contraseña".
+        if (string.IsNullOrWhiteSpace(_modelo.NuevaContrasena))
+        {
+            _modelo.NuevaContrasena = null;
+        }
+
+        var resultado = await UsuarioServicio.EditarAsync(UsuarioId, _modelo);
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo("admin/usuarios", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+
+    private async Task AlternarEstadoAsync() =>
+        await Informar(await UsuarioServicio.AlternarEstadoAsync(UsuarioId), "Estado actualizado.");
+
+    private async Task AlternarAdministradorAsync() =>
+        await Informar(await UsuarioServicio.AlternarAdministradorAsync(UsuarioId), "Rol actualizado.");
+
+    private async Task Informar(ResultadoApi resultado, string aviso)
+    {
+        await CargarAsync();
+        _error = resultado.Error;
+        _aviso = resultado.Exito ? aviso : null;
+    }
+}

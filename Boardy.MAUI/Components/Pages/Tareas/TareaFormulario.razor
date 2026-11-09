@@ -1,0 +1,157 @@
+@page "/listas/{ListaTareaId:int}/tareas/nueva"
+@page "/tareas/{TareaId:int}/editar"
+@inject TareaServicio TareaServicio
+@inject TableroServicio TableroServicio
+@inject NavigationManager Navegacion
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="@(EsNueva ? "Nueva tarea" : "Editar tarea")" Volver="@UrlVolver" />
+
+<EditForm Model="_modelo" OnValidSubmit="GuardarAsync">
+    <DataAnnotationsValidator />
+    <MensajeError Texto="@_error" />
+
+    <div class="mb-3">
+        <label class="form-label">Título</label>
+        <InputText class="form-control" @bind-Value="_modelo.Titulo" />
+        <ValidationMessage For="() => _modelo.Titulo" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Descripción</label>
+        <InputTextArea class="form-control" rows="4" @bind-Value="_modelo.Descripcion" />
+        <ValidationMessage For="() => _modelo.Descripcion" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Fecha de vencimiento</label>
+        <InputDate class="form-control" @bind-Value="_modelo.FechaVencimiento" />
+        <ValidationMessage For="() => _modelo.FechaVencimiento" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Prioridad</label>
+        <InputSelect class="form-select" @bind-Value="_modelo.Prioridad">
+            @foreach (var prioridad in Enum.GetValues<PrioridadTarea>())
+            {
+                <option value="@prioridad">@prioridad</option>
+            }
+        </InputSelect>
+    </div>
+
+    @if (_estadoFijo is null)
+    {
+        <div class="mb-4">
+            <label class="form-label">Estado</label>
+            <InputSelect class="form-select" @bind-Value="_modelo.EstadoTareaId">
+                <option value="0">Elegí un estado</option>
+                @foreach (var estado in _estados)
+                {
+                    <option value="@estado.EstadoTareaId">@estado.Nombre</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => _modelo.EstadoTareaId" />
+        </div>
+    }
+
+    <button class="btn btn-primary w-100" type="submit" disabled="@_enviando">Guardar</button>
+</EditForm>
+
+@if (!EsNueva)
+{
+    <button class="btn btn-outline-danger w-100 mt-3" @onclick="EliminarAsync" disabled="@_enviando">Eliminar tarea</button>
+}
+
+@code {
+    [Parameter] public int? ListaTareaId { get; set; }
+
+    [Parameter] public int? TareaId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tableroId")] public int? TableroIdConsulta { get; set; }
+
+    private ActualizarTareaDto _modelo = new();
+    private List<EstadoTareaDto> _estados = new();
+    private int? _estadoFijo;
+    private int _tableroId;
+    private string? _error;
+    private bool _enviando;
+
+    private bool EsNueva => TareaId is null;
+
+    private string UrlVolver => EsNueva ? $"tableros/{_tableroId}" : $"tareas/{TareaId}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tableroId = TableroIdConsulta ?? 0;
+        var listaId = ListaTareaId;
+
+        if (!EsNueva)
+        {
+            var tarea = await TareaServicio.ObtenerAsync(TareaId!.Value);
+            if (!tarea.Exito)
+            {
+                _error = tarea.Error;
+                return;
+            }
+
+            var datos = tarea.Datos!;
+            _tableroId = datos.TableroId;
+            listaId = datos.ListaTareaId;
+            _modelo = new ActualizarTareaDto
+            {
+                Titulo = datos.Titulo,
+                Descripcion = datos.Descripcion,
+                FechaVencimiento = datos.FechaVencimiento,
+                Prioridad = datos.Prioridad,
+                EstadoTareaId = datos.EstadoTareaId
+            };
+        }
+
+        // Si la lista tiene estado (Kanban), la tarea toma ese estado y no se muestra el selector.
+        var listas = await TableroServicio.ListarListasAsync(_tableroId);
+        _estadoFijo = listas.Datos?.FirstOrDefault(l => l.ListaTareaId == listaId)?.EstadoTareaId;
+
+        if (_estadoFijo is not null)
+        {
+            _modelo.EstadoTareaId = _estadoFijo.Value;
+        }
+        else
+        {
+            _estados = (await TableroServicio.ListarEstadosAsync()).Datos ?? new();
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        _enviando = true;
+        var resultado = EsNueva
+            ? await TareaServicio.CrearAsync(ListaTareaId!.Value, _modelo)
+            : await TareaServicio.ActualizarAsync(TareaId!.Value, _modelo);
+        _enviando = false;
+
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo($"tareas/{resultado.Datos!.TareaId}", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (!await Dialogo.ConfirmarAsync("¿Eliminar la tarea con sus comentarios?", "Eliminar"))
+        {
+            return;
+        }
+
+        _enviando = true;
+        var resultado = await TareaServicio.EliminarAsync(TareaId!.Value);
+        _enviando = false;
+
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo($"tableros/{_tableroId}", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+}

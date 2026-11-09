@@ -1,0 +1,307 @@
+@page "/tareas/{TareaId:int}"
+@inject TareaServicio TareaServicio
+@inject TableroServicio TableroServicio
+@inject MiembroServicio MiembroServicio
+@inject SesionServicio Sesion
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="Detalle de tarea" Volver="@(_tarea is null ? "tableros" : $"tableros/{_tarea.TableroId}")">
+    @if (PuedeAdministrar)
+    {
+        <a class="boton-icono" href="tareas/@TareaId/editar" aria-label="Editar tarea"><Icono Nombre="editar" Tamano="20" /></a>
+    }
+</Encabezado>
+
+<MensajeError Texto="@_error" />
+
+@if (_tarea is null)
+{
+    @if (_error is null)
+    {
+        <div class="cargando"><div class="spinner-border text-primary"></div></div>
+    }
+}
+else
+{
+    <h2 class="h4 mb-3">@_tarea.Titulo</h2>
+
+    <div class="seccion">
+        <h2>Descripción</h2>
+        <p class="mb-0">@(string.IsNullOrEmpty(_tarea.Descripcion) ? "Sin descripción." : _tarea.Descripcion)</p>
+    </div>
+
+    <div class="seccion">
+        <h2>Estado y prioridad</h2>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="etiqueta prioridad-@_tarea.Prioridad">Prioridad @_tarea.Prioridad</span>
+            <span class="etiqueta" style="background:var(--superficie-alta)">Lista: @_tarea.ListaNombre</span>
+            @if (_tarea.FechaVencimiento is { } vence)
+            {
+                <span class="etiqueta" style="background:var(--superficie-alta)">Vence @vence.ToString("dd/MM/yyyy")</span>
+            }
+        </div>
+
+        @if (PuedeTrabajar)
+        {
+            <label class="form-label">Estado</label>
+            <select class="form-select mb-2" value="@_tarea.EstadoTareaId" @onchange="CambiarEstadoAsync">
+                @foreach (var estado in EstadosDisponibles)
+                {
+                    <option value="@estado.EstadoTareaId">@estado.Nombre</option>
+                }
+            </select>
+
+            @if (!_esKanban)
+            {
+                <label class="form-label">Mover a la lista</label>
+                <select class="form-select" value="@_tarea.ListaTareaId" @onchange="MoverAsync">
+                    @foreach (var lista in _listas)
+                    {
+                        <option value="@lista.ListaTareaId">@lista.Nombre</option>
+                    }
+                </select>
+            }
+        }
+        else
+        {
+            <p class="mb-0">Estado: <strong>@_tarea.EstadoNombre</strong></p>
+        }
+    </div>
+
+    <div class="seccion">
+        <h2>Usuarios asignados</h2>
+        @if (_tarea.Miembros.Count == 0)
+        {
+            <p class="text-muted small">Nadie asignado.</p>
+        }
+        @foreach (var miembro in _tarea.Miembros)
+        {
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <Avatar Nombre="@miembro.NombreCompleto" Foto="@miembro.FotoPerfil" Tamano="34" />
+                <span class="flex-fill recortar">@miembro.NombreCompleto</span>
+                @if (PuedeAdministrar)
+                {
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => QuitarMiembroAsync(miembro.TableroMiembroId)">Quitar</button>
+                }
+            </div>
+        }
+        @if (PuedeAdministrar && MiembrosSinAsignar.Any())
+        {
+            <select class="form-select mt-2" value="" @onchange="AsignarMiembroAsync">
+                <option value="">+ Asignar usuario</option>
+                @foreach (var miembro in MiembrosSinAsignar)
+                {
+                    <option value="@miembro.TableroMiembroId">@miembro.NombreCompleto</option>
+                }
+            </select>
+        }
+    </div>
+
+    <div class="seccion">
+        <h2>Etiquetas</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @if (_tarea.Etiquetas.Count == 0)
+            {
+                <span class="text-muted small">Sin etiquetas.</span>
+            }
+            @foreach (var etiqueta in _tarea.Etiquetas)
+            {
+                <span class="etiqueta" style="background:@etiqueta.Color">
+                    @etiqueta.Nombre
+                    @if (PuedeTrabajar)
+                    {
+                        <button @onclick="() => QuitarEtiquetaAsync(etiqueta.EtiquetaId)" aria-label="Quitar etiqueta">×</button>
+                    }
+                </span>
+            }
+        </div>
+        @if (PuedeTrabajar && EtiquetasSinAsignar.Any())
+        {
+            <select class="form-select mt-3" value="" @onchange="AsignarEtiquetaAsync">
+                <option value="">+ Agregar etiqueta</option>
+                @foreach (var etiqueta in EtiquetasSinAsignar)
+                {
+                    <option value="@etiqueta.EtiquetaId">@etiqueta.Nombre</option>
+                }
+            </select>
+        }
+    </div>
+
+    <div class="seccion">
+        <h2>Comentarios</h2>
+        @if (_comentarios.Count == 0)
+        {
+            <p class="text-muted small">Todavía no hay comentarios.</p>
+        }
+        @foreach (var comentario in _comentarios)
+        {
+            <div class="d-flex gap-2 mb-3">
+                <Avatar Nombre="@comentario.UsuarioNombre" Tamano="34" />
+                <div class="flex-fill">
+                    <div class="small text-muted">@comentario.UsuarioNombre · @comentario.FechaCreacion.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                    <div>@comentario.Contenido</div>
+                </div>
+                @if (PuedeAdministrar || comentario.UsuarioId == Sesion.Usuario?.UsuarioId)
+                {
+                    <button class="btn btn-sm text-muted p-0" @onclick="() => EliminarComentarioAsync(comentario.ComentarioId)" aria-label="Eliminar comentario">
+                        <Icono Nombre="basura" Tamano="18" />
+                    </button>
+                }
+            </div>
+        }
+        @if (PuedeColaborar)
+        {
+            <EditForm Model="_nuevoComentario" OnValidSubmit="ComentarAsync">
+                <DataAnnotationsValidator />
+                <InputTextArea class="form-control mb-2" rows="2" placeholder="Escribí un comentario..." @bind-Value="_nuevoComentario.Contenido" />
+                <ValidationMessage For="() => _nuevoComentario.Contenido" />
+                <button class="btn btn-primary btn-sm" type="submit">Comentar</button>
+            </EditForm>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int TareaId { get; set; }
+
+    private TareaDto? _tarea;
+    private string _rol = string.Empty;
+    private bool _esKanban;
+    private List<ListaTareaDto> _listas = new();
+    private List<EstadoTareaDto> _estados = new();
+    private List<EtiquetaDto> _etiquetasTablero = new();
+    private List<TableroMiembroDto> _miembrosTablero = new();
+    private List<ComentarioDto> _comentarios = new();
+    private CrearComentarioDto _nuevoComentario = new();
+    private string? _error;
+
+    private bool PuedeAdministrar => PermisosTablero.PuedeAdministrar(_rol);
+
+    private bool PuedeColaborar => PermisosTablero.PuedeColaborar(_rol);
+
+    // Igual que la política TrabajarEnTarea del backend: Propietario/Administrador, o el Operario asignado.
+    private bool PuedeTrabajar => PuedeAdministrar
+        || (_rol == PermisosTablero.Operario && _tarea!.Miembros.Any(m => m.UsuarioId == Sesion.Usuario?.UsuarioId));
+
+    // En Kanban solo se ofrecen los estados que tienen una lista adonde mover la tarea.
+    private IEnumerable<EstadoTareaDto> EstadosDisponibles => _esKanban
+        ? _estados.Where(e => _listas.Any(l => l.EstadoTareaId == e.EstadoTareaId))
+        : _estados;
+
+    private IEnumerable<TableroMiembroDto> MiembrosSinAsignar =>
+        _miembrosTablero.Where(m => _tarea!.Miembros.All(a => a.TableroMiembroId != m.TableroMiembroId));
+
+    private IEnumerable<EtiquetaDto> EtiquetasSinAsignar =>
+        _etiquetasTablero.Where(e => _tarea!.Etiquetas.All(a => a.EtiquetaId != e.EtiquetaId));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tarea = await TareaServicio.ObtenerAsync(TareaId);
+        if (!tarea.Exito)
+        {
+            _error = tarea.Error;
+            return;
+        }
+
+        var tableroId = tarea.Datos!.TableroId;
+        var consultaTablero = TableroServicio.ObtenerAsync(tableroId);
+        var consultaListas = TableroServicio.ListarListasAsync(tableroId);
+        var consultaEstados = TableroServicio.ListarEstadosAsync();
+        var consultaEtiquetas = TableroServicio.ListarEtiquetasAsync(tableroId);
+        var consultaMiembros = MiembroServicio.ListarAsync(tableroId);
+        var consultaComentarios = TareaServicio.ListarComentariosAsync(TareaId);
+
+        var tablero = await consultaTablero;
+        _rol = tablero.Datos?.RolUsuario ?? string.Empty;
+        _esKanban = tablero.Datos?.EsKanban == true;
+        _listas = (await consultaListas).Datos ?? new();
+        _estados = (await consultaEstados).Datos ?? new();
+        _etiquetasTablero = (await consultaEtiquetas).Datos ?? new();
+        _miembrosTablero = (await consultaMiembros).Datos ?? new();
+        _comentarios = (await consultaComentarios).Datos ?? new();
+        _tarea = tarea.Datos;
+    }
+
+    private async Task CambiarEstadoAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var estadoId))
+        {
+            Aplicar(await TareaServicio.CambiarEstadoAsync(TareaId, new CambiarEstadoTareaDto { EstadoTareaId = estadoId }));
+        }
+    }
+
+    private async Task MoverAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var listaId))
+        {
+            Aplicar(await TareaServicio.MoverAsync(TareaId, new MoverTareaDto { ListaTareaId = listaId }));
+        }
+    }
+
+    private async Task AsignarMiembroAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var miembroId))
+        {
+            Aplicar(await TareaServicio.AsignarMiembroAsync(TareaId, miembroId));
+        }
+    }
+
+    private async Task QuitarMiembroAsync(int tableroMiembroId) =>
+        await RecargarSiExitoAsync(await TareaServicio.QuitarMiembroAsync(TareaId, tableroMiembroId));
+
+    private async Task AsignarEtiquetaAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var etiquetaId))
+        {
+            await RecargarSiExitoAsync(await TareaServicio.AsignarEtiquetaAsync(TareaId, etiquetaId));
+        }
+    }
+
+    private async Task QuitarEtiquetaAsync(int etiquetaId) =>
+        await RecargarSiExitoAsync(await TareaServicio.QuitarEtiquetaAsync(TareaId, etiquetaId));
+
+    private async Task ComentarAsync()
+    {
+        var resultado = await TareaServicio.ComentarAsync(TareaId, _nuevoComentario);
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _comentarios.Add(resultado.Datos!);
+            _nuevoComentario = new();
+        }
+    }
+
+    private async Task EliminarComentarioAsync(int comentarioId)
+    {
+        if (!await Dialogo.ConfirmarAsync("¿Eliminar el comentario?", "Eliminar"))
+        {
+            return;
+        }
+
+        var resultado = await TareaServicio.EliminarComentarioAsync(comentarioId);
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _comentarios.RemoveAll(c => c.ComentarioId == comentarioId);
+        }
+    }
+
+    private void Aplicar(ResultadoApi<TareaDto> resultado)
+    {
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _tarea = resultado.Datos;
+        }
+    }
+
+    // Las operaciones sin cuerpo de respuesta vuelven a pedir la tarea para reflejar el cambio.
+    private async Task RecargarSiExitoAsync(ResultadoApi resultado)
+    {
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            Aplicar(await TareaServicio.ObtenerAsync(TareaId));
+        }
+    }
+}

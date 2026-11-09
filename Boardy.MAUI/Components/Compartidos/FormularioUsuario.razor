@@ -1,0 +1,41 @@
+@* Alta de usuario: lo usan el registro propio y el alta por un administrador. *@
+<EditForm Model="Modelo" OnValidSubmit="AlEnviar">
+    <DataAnnotationsValidator />
+    <MensajeError Texto="@Error" />
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="Modelo.Nombre" />
+        <ValidationMessage For="() => Modelo.Nombre" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Apellido</label>
+        <InputText class="form-control" @bind-Value="Modelo.Apellido" />
+        <ValidationMessage For="() => Modelo.Apellido" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Correo electrónico</label>
+        <InputText class="form-control" type="email" placeholder="email@dominio.com" @bind-Value="Modelo.Email" />
+        <ValidationMessage For="() => Modelo.Email" />
+    </div>
+    <div class="mb-4">
+        <label class="form-label">Contraseña</label>
+        <InputText class="form-control" type="password" @bind-Value="Modelo.Contrasena" autocomplete="new-password" />
+        <div class="form-text text-muted">Mínimo 6 caracteres, con mayúscula, minúscula, número y símbolo.</div>
+        <ValidationMessage For="() => Modelo.Contrasena" />
+    </div>
+
+    <button class="btn btn-primary w-100" type="submit" disabled="@Enviando">@TextoBoton</button>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired] public RegistrarUsuarioDto Modelo { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string TextoBoton { get; set; } = string.Empty;
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Enviando { get; set; }
+
+    [Parameter] public EventCallback AlEnviar { get; set; }
+}

@@ -1,0 +1,9 @@
+@page "/"
+@layout LayoutPublico
+@inject SesionServicio Sesion
+@inject NavigationManager Navegacion
+
+@code {
+    protected override void OnInitialized() =>
+        Navegacion.NavigateTo(Sesion.Activa ? "tableros" : "login", replace: true);
+}

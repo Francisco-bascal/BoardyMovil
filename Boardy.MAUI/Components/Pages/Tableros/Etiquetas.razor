@@ -1,0 +1,79 @@
+@page "/tableros/{TableroId:int}/etiquetas"
+@inject TableroServicio TableroServicio
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="Etiquetas" Volver="@($"tableros/{TableroId}")" />
+
+<MensajeError Texto="@_error" />
+
+<div class="seccion">
+    <h2>Nueva etiqueta</h2>
+    <EditForm Model="_nueva" OnValidSubmit="CrearAsync">
+        <DataAnnotationsValidator />
+        <div class="d-flex gap-2">
+            <InputText class="form-control" placeholder="Nombre" @bind-Value="_nueva.Nombre" />
+            <input type="color" class="form-control form-control-color" style="width:56px" @bind="_nueva.Color" />
+        </div>
+        <ValidationMessage For="() => _nueva.Nombre" />
+        <button class="btn btn-primary btn-sm mt-2" type="submit">Agregar</button>
+    </EditForm>
+</div>
+
+@if (_etiquetas is null)
+{
+    <div class="cargando"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @foreach (var etiqueta in _etiquetas)
+    {
+        <div class="tarjeta">
+            <span class="etiqueta" style="background:@etiqueta.Color">@etiqueta.Nombre</span>
+            <span class="flex-fill tarjeta-sub">@etiqueta.CantidadTareas tarea(s)</span>
+            <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarAsync(etiqueta)">Eliminar</button>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int TableroId { get; set; }
+
+    private List<EtiquetaDto>? _etiquetas;
+    private CrearEtiquetaDto _nueva = new() { Color = "#4C8DFF" };
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        var resultado = await TableroServicio.ListarEtiquetasAsync(TableroId);
+        _error = resultado.Error;
+        _etiquetas = resultado.Datos ?? new();
+    }
+
+    private async Task CrearAsync()
+    {
+        var resultado = await TableroServicio.CrearEtiquetaAsync(TableroId, _nueva);
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _nueva = new() { Color = "#4C8DFF" };
+            await CargarAsync();
+        }
+    }
+
+    private async Task EliminarAsync(EtiquetaDto etiqueta)
+    {
+        if (!await Dialogo.ConfirmarAsync($"¿Eliminar la etiqueta \"{etiqueta.Nombre}\"?", "Eliminar"))
+        {
+            return;
+        }
+
+        var resultado = await TableroServicio.EliminarEtiquetaAsync(etiqueta.EtiquetaId);
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            await CargarAsync();
+        }
+    }
+}

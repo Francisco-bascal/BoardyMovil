@@ -1,0 +1,139 @@
+@page "/perfil"
+@inject UsuarioServicio UsuarioServicio
+@inject AutenticacionServicio Autenticacion
+@inject SesionServicio Sesion
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="Mi perfil" />
+
+<MensajeError Texto="@_error" />
+@if (_aviso is not null)
+{
+    <div class="alert alert-success py-2">@_aviso</div>
+}
+
+<div class="text-center mb-4">
+    <Avatar Nombre="@NombreCompleto" Foto="@Sesion.Usuario?.FotoPerfil" Tamano="96" />
+    <div class="mt-2">
+        <label class="btn btn-sm btn-outline-light">
+            Cambiar foto
+            <InputFile class="d-none" accept="image/jpeg,image/png,image/webp" OnChange="SubirFotoAsync" />
+        </label>
+    </div>
+</div>
+
+<div class="seccion">
+    <h2>Datos personales</h2>
+    <EditForm Model="_datos" OnValidSubmit="GuardarDatosAsync">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="_datos.Nombre" />
+            <ValidationMessage For="() => _datos.Nombre" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Apellido</label>
+            <InputText class="form-control" @bind-Value="_datos.Apellido" />
+            <ValidationMessage For="() => _datos.Apellido" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Correo electrónico</label>
+            <InputText class="form-control" type="email" @bind-Value="_datos.Email" />
+            <ValidationMessage For="() => _datos.Email" />
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Guardar cambios</button>
+    </EditForm>
+</div>
+
+<div class="seccion">
+    <h2>Contraseña</h2>
+    <EditForm Model="_contrasena" OnValidSubmit="CambiarContrasenaAsync">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <InputText class="form-control" type="password" placeholder="Contraseña actual" @bind-Value="_contrasena.ContrasenaActual" autocomplete="current-password" />
+            <ValidationMessage For="() => _contrasena.ContrasenaActual" />
+        </div>
+        <div class="mb-3">
+            <InputText class="form-control" type="password" placeholder="Nueva contraseña" @bind-Value="_contrasena.ContrasenaNueva" autocomplete="new-password" />
+            <ValidationMessage For="() => _contrasena.ContrasenaNueva" />
+        </div>
+        <button class="btn btn-outline-light w-100" type="submit">Cambiar contraseña</button>
+    </EditForm>
+</div>
+
+<button class="btn btn-plata w-100 mb-3" @onclick="Autenticacion.CerrarSesion">Cerrar sesión</button>
+<button class="btn btn-outline-danger w-100" @onclick="EliminarCuentaAsync">Eliminar cuenta</button>
+
+@code {
+    private const long TamanioMaximoFoto = 2 * 1024 * 1024;
+
+    private ActualizarPerfilDto _datos = new();
+    private CambiarContrasenaDto _contrasena = new();
+    private string? _error;
+    private string? _aviso;
+
+    private string NombreCompleto => $"{Sesion.Usuario?.Nombre} {Sesion.Usuario?.Apellido}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var perfil = await UsuarioServicio.ObtenerPerfilAsync();
+        _error = perfil.Error;
+        if (perfil.Exito)
+        {
+            _datos = new ActualizarPerfilDto { Nombre = perfil.Datos!.Nombre, Apellido = perfil.Datos.Apellido, Email = perfil.Datos.Email };
+        }
+    }
+
+    private async Task GuardarDatosAsync() =>
+        Informar(await UsuarioServicio.ActualizarPerfilAsync(_datos), "Datos actualizados.");
+
+    private async Task CambiarContrasenaAsync()
+    {
+        var resultado = await UsuarioServicio.CambiarContrasenaAsync(_contrasena);
+        if (resultado.Exito)
+        {
+            // Cambiar la contraseña invalida el token actual: se inicia sesión de nuevo con la nueva.
+            resultado = await Autenticacion.IniciarSesionAsync(new IniciarSesionDto { Email = Sesion.Usuario!.Email, Contrasena = _contrasena.ContrasenaNueva });
+            _contrasena = new();
+        }
+
+        Informar(resultado, "Contraseña actualizada.");
+    }
+
+    private async Task SubirFotoAsync(InputFileChangeEventArgs e)
+    {
+        // El backend también valida tamaño y formato; acá se corta antes de subir un archivo enorme.
+        await using var contenido = e.File.OpenReadStream(TamanioMaximoFoto + 1);
+        using var copia = new MemoryStream();
+        try
+        {
+            await contenido.CopyToAsync(copia);
+        }
+        catch (IOException)
+        {
+            _error = "La foto debe pesar como máximo 2 MB.";
+            return;
+        }
+
+        copia.Position = 0;
+        Informar(await UsuarioServicio.SubirFotoAsync(copia, e.File.Name), "Foto actualizada.");
+    }
+
+    private async Task EliminarCuentaAsync()
+    {
+        if (!await Dialogo.ConfirmarAsync("¿Eliminar tu cuenta? Perdés el acceso a todos tus tableros. No se puede deshacer.", "Eliminar"))
+        {
+            return;
+        }
+
+        // Si sale bien, el servicio cierra la sesión y el layout vuelve al login.
+        var resultado = await UsuarioServicio.EliminarCuentaAsync();
+        _error = resultado.Error;
+    }
+
+    private void Informar(ResultadoApi resultado, string aviso)
+    {
+        _error = resultado.Error;
+        _aviso = resultado.Exito ? aviso : null;
+    }
+}

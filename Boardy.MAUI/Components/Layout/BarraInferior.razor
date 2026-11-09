@@ -1,0 +1,39 @@
+@inject SesionServicio Sesion
+@inject MiembroServicio MiembroServicio
+
+<nav class="barra-inferior">
+    <NavLink href="tableros">
+        <Icono Nombre="inicio" />
+        <span>Tableros</span>
+    </NavLink>
+    <NavLink href="invitaciones">
+        <Icono Nombre="campana" />
+        @if (_pendientes > 0)
+        {
+            <span class="contador">@_pendientes</span>
+        }
+        <span>Invitaciones</span>
+    </NavLink>
+    @if (Sesion.Usuario?.EsAdministrador == true)
+    {
+        <NavLink href="admin/usuarios">
+            <Icono Nombre="escudo" />
+            <span>Usuarios</span>
+        </NavLink>
+    }
+    <NavLink href="perfil">
+        <Icono Nombre="usuario" />
+        <span>Perfil</span>
+    </NavLink>
+</nav>
+
+@code {
+    private int _pendientes;
+
+    // shortcut: el contador de invitaciones se actualiza al abrir la app, no en tiempo real; si hace falta, sumar sondeo o SignalR.
+    protected override async Task OnInitializedAsync()
+    {
+        var resultado = await MiembroServicio.ListarRecibidasAsync();
+        _pendientes = resultado.Datos?.Count ?? 0;
+    }
+}

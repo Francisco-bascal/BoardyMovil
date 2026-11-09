@@ -1,0 +1,114 @@
+using Boardy.Backend.Comun;
+using Boardy.Backend.Models;
+using Microsoft.AspNetCore.Identity;
+
+namespace Boardy.Backend.Services
+{
+    /// <summary>
+    /// Guarda y quita la foto de perfil en wwwroot/uploads.
+    /// </summary>
+    public class FotoPerfilService : IFotoPerfilService
+    {
+        private const long TamanioMaximo = 2 * 1024 * 1024;
+        private const string Carpeta = "uploads";
+        private const int BytesFirma = 12;
+
+        private readonly UserManager<Usuario> _userManager;
+        private readonly IWebHostEnvironment _entorno;
+
+        public FotoPerfilService(UserManager<Usuario> userManager, IWebHostEnvironment entorno)
+        {
+            _userManager = userManager;
+            _entorno = entorno;
+        }
+
+        // Valida la foto, la guarda con nombre aleatorio y actualiza al usuario.
+        public async Task<ResultadoOperacion<string>> GuardarAsync(string usuarioId, IFormFile archivo, CancellationToken cancellationToken = default)
+        {
+            var usuario = await _userManager.FindByIdAsync(usuarioId);
+            if (usuario is null)
+            {
+                return ResultadoOperacion<string>.NoExiste("El usuario no existe.");
+            }
+
+            // Regla de tamaño: el archivo no puede estar vacío ni superar 2 MB.
+            if (archivo.Length == 0 || archivo.Length > TamanioMaximo)
+            {
+                return ResultadoOperacion<string>.Fallo("La foto debe pesar como máximo 2 MB.");
+            }
+
+            await using var origen = archivo.OpenReadStream();
+            var firma = new byte[BytesFirma];
+            await origen.ReadAtLeastAsync(firma, BytesFirma, throwOnEndOfStream: false, cancellationToken);
+
+            var extension = ObtenerExtension(firma);
+            // Regla de formato: solo se acepta JPG, PNG o WebP según su contenido.
+            if (extension is null)
+            {
+                return ResultadoOperacion<string>.Fallo("La foto debe ser JPG, PNG o WebP.");
+            }
+
+            var directorio = Path.Combine(_entorno.WebRootPath, Carpeta);
+            Directory.CreateDirectory(directorio);
+
+            var nombre = Guid.NewGuid().ToString("N") + extension;
+            origen.Position = 0;
+            await using (var destino = File.Create(Path.Combine(directorio, nombre)))
+            {
+                await origen.CopyToAsync(destino, cancellationToken);
+            }
+
+            var ruta = $"/{Carpeta}/{nombre}";
+            var resultado = await ActualizarAsync(usuario, ruta, "Foto de perfil actualizada.");
+
+            return resultado.Exito
+                ? ResultadoOperacion<string>.Exitoso(ruta, resultado.Mensaje)
+                : ResultadoOperacion<string>.Fallo(resultado.Mensaje!);
+        }
+
+        // Deja al usuario sin foto y borra el archivo.
+        public Task<ResultadoOperacion> QuitarAsync(Usuario usuario)
+        {
+            return ActualizarAsync(usuario, null, "Foto de perfil eliminada.");
+        }
+
+        // Guarda la nueva ruta y, si salió bien, borra el archivo anterior.
+        private async Task<ResultadoOperacion> ActualizarAsync(Usuario usuario, string? nuevaFoto, string mensaje)
+        {
+            var anterior = usuario.FotoPerfil;
+            usuario.FotoPerfil = nuevaFoto;
+
+            var resultado = await _userManager.UpdateAsync(usuario);
+            if (!resultado.Succeeded)
+            {
+                return ResultadoOperacion.Fallo(string.Join(" ", resultado.Errors.Select(e => e.Description)));
+            }
+
+            if (anterior is not null)
+            {
+                File.Delete(Path.Combine(_entorno.WebRootPath, Carpeta, Path.GetFileName(anterior)));
+            }
+
+            return ResultadoOperacion.Exitoso(mensaje);
+        }
+
+        // Se valida el contenido real: la extensión y el Content-Type los controla el cliente.
+        private static string? ObtenerExtension(byte[] firma)
+        {
+            if (firma.AsSpan(0, 3).SequenceEqual(new byte[] { 0xFF, 0xD8, 0xFF }))
+            {
+                return ".jpg";
+            }
+
+            if (firma.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
+            {
+                return ".png";
+            }
+
+            var esRiff = firma.AsSpan(0, 4).SequenceEqual("RIFF"u8);
+            var esWebp = firma.AsSpan(8, 4).SequenceEqual("WEBP"u8);
+
+            return esRiff && esWebp ? ".webp" : null;
+        }
+    }
+}

@@ -1,0 +1,8 @@
+@if (!string.IsNullOrEmpty(Texto))
+{
+    <div class="alert alert-danger py-2" role="alert">@Texto</div>
+}
+
+@code {
+    [Parameter] public string? Texto { get; set; }
+}

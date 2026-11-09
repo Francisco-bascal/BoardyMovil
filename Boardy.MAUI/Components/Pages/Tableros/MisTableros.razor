@@ -1,0 +1,53 @@
+@page "/tableros"
+@inject TableroServicio TableroServicio
+
+<Encabezado Titulo="Mis tableros" />
+
+<div class="position-relative mb-3">
+    <input class="form-control ps-5" placeholder="Buscar tableros" @bind="_busqueda" @bind:event="oninput" />
+    <span class="position-absolute top-50 translate-middle-y text-muted" style="left:14px"><Icono Nombre="buscar" Tamano="18" /></span>
+</div>
+
+<MensajeError Texto="@_error" />
+
+@if (_tableros is null)
+{
+    <div class="cargando"><div class="spinner-border text-primary"></div></div>
+}
+else if (!Filtrados.Any())
+{
+    <p class="vacio">@(_tableros.Count == 0 ? "Todavía no tenés tableros. Creá uno con el botón +." : "Ningún tablero coincide con la búsqueda.")</p>
+}
+else
+{
+    @foreach (var tablero in Filtrados)
+    {
+        <a class="tarjeta text-reset text-decoration-none" href="tableros/@tablero.TableroId">
+            <Avatar Nombre="@tablero.Nombre" Tamano="44" />
+            <div class="tarjeta-cuerpo">
+                <p class="tarjeta-titulo recortar">@tablero.Nombre</p>
+                <p class="tarjeta-sub recortar">@(string.IsNullOrEmpty(tablero.Descripcion) ? "Sin descripción" : tablero.Descripcion)</p>
+            </div>
+            <span class="btn btn-sm btn-outline-light">Ver</span>
+        </a>
+    }
+}
+
+<a class="boton-flotante" href="tableros/nuevo" aria-label="Nuevo tablero"><Icono Nombre="mas" Tamano="26" /></a>
+
+@code {
+    private List<TableroDto>? _tableros;
+    private string _busqueda = string.Empty;
+    private string? _error;
+
+    private IEnumerable<TableroDto> Filtrados => (_tableros ?? new()).Where(t =>
+        t.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+        || t.Descripcion.Contains(_busqueda, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resultado = await TableroServicio.ListarAsync();
+        _tableros = resultado.Datos ?? new();
+        _error = resultado.Error;
+    }
+}

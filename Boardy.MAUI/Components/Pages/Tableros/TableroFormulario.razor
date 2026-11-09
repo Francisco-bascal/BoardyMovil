@@ -1,0 +1,126 @@
+@page "/tableros/nuevo"
+@page "/tableros/{TableroId:int}/editar"
+@inject TableroServicio TableroServicio
+@inject NavigationManager Navegacion
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="@(EsNuevo ? "Nuevo tablero" : "Editar tablero")" Volver="@(EsNuevo ? "tableros" : $"tableros/{TableroId}")" />
+
+<EditForm Model="_modelo" OnValidSubmit="GuardarAsync">
+    <DataAnnotationsValidator />
+    <MensajeError Texto="@_error" />
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="_modelo.Nombre" />
+        <ValidationMessage For="() => _modelo.Nombre" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Descripción</label>
+        <InputTextArea class="form-control" rows="3" @bind-Value="_modelo.Descripcion" />
+        <ValidationMessage For="() => _modelo.Descripcion" />
+    </div>
+
+    @if (EsNuevo)
+    {
+        <div class="mb-4">
+            <label class="form-label">Esquema</label>
+            <InputSelect class="form-select" @bind-Value="_modelo.EsKanban">
+                <option value="true">Kanban (Pendiente, En progreso, Finalizada)</option>
+                <option value="false">Libre (listas a elección)</option>
+            </InputSelect>
+            <div class="form-text text-muted">El esquema no se puede cambiar después.</div>
+        </div>
+    }
+
+    <button class="btn btn-primary w-100" type="submit" disabled="@_enviando">Guardar</button>
+</EditForm>
+
+@if (!EsNuevo && _esPropietario)
+{
+    <button class="btn btn-outline-danger w-100 mt-3" @onclick="EliminarAsync" disabled="@_enviando">Eliminar tablero</button>
+}
+
+@code {
+    [Parameter] public int? TableroId { get; set; }
+
+    private ActualizarTableroDto _modelo = new();
+    private bool _esPropietario;
+    private string? _error;
+    private bool _enviando;
+
+    private bool EsNuevo => TableroId is null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EsNuevo)
+        {
+            return;
+        }
+
+        var resultado = await TableroServicio.ObtenerAsync(TableroId!.Value);
+        if (!resultado.Exito)
+        {
+            _error = resultado.Error;
+            return;
+        }
+
+        _modelo = new ActualizarTableroDto
+        {
+            Nombre = resultado.Datos!.Nombre,
+            Descripcion = resultado.Datos.Descripcion,
+            EsKanban = resultado.Datos.EsKanban
+        };
+        _esPropietario = resultado.Datos.EsPropietario;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _enviando = true;
+        _error = null;
+
+        if (EsNuevo)
+        {
+            var creado = await TableroServicio.CrearAsync(_modelo);
+            _enviando = false;
+            if (creado.Exito)
+            {
+                Navegacion.NavigateTo($"tableros/{creado.Datos!.TableroId}", replace: true);
+                return;
+            }
+
+            _error = creado.Error;
+            return;
+        }
+
+        var actualizado = await TableroServicio.ActualizarAsync(TableroId!.Value, _modelo);
+        _enviando = false;
+        if (actualizado.Exito)
+        {
+            Navegacion.NavigateTo($"tableros/{TableroId}", replace: true);
+            return;
+        }
+
+        _error = actualizado.Error;
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (!await Dialogo.ConfirmarAsync("¿Eliminar el tablero con todas sus listas y tareas? No se puede deshacer.", "Eliminar"))
+        {
+            return;
+        }
+
+        _enviando = true;
+        var resultado = await TableroServicio.EliminarAsync(TableroId!.Value);
+        _enviando = false;
+
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo("tableros", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+}

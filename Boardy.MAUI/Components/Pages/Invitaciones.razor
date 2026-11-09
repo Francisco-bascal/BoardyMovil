@@ -1,0 +1,64 @@
+@page "/invitaciones"
+@inject MiembroServicio MiembroServicio
+
+<Encabezado Titulo="Invitaciones" />
+
+<MensajeError Texto="@_error" />
+@if (_aviso is not null)
+{
+    <div class="alert alert-success py-2">@_aviso</div>
+}
+
+@if (_invitaciones is null)
+{
+    <div class="cargando"><div class="spinner-border text-primary"></div></div>
+}
+else if (_invitaciones.Count == 0)
+{
+    <p class="vacio">No tenés invitaciones pendientes.</p>
+}
+else
+{
+    @foreach (var invitacion in _invitaciones)
+    {
+        <div class="seccion">
+            <p class="tarjeta-titulo">@invitacion.TableroNombre</p>
+            <p class="tarjeta-sub">@invitacion.UsuarioInvitadorNombre te invitó · @invitacion.FechaInvitacion.ToLocalTime().ToString("dd/MM/yyyy")</p>
+            @if (!string.IsNullOrEmpty(invitacion.Mensaje))
+            {
+                <p class="mt-2 mb-0 fst-italic">"@invitacion.Mensaje"</p>
+            }
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary btn-sm flex-fill" @onclick="() => ResponderAsync(invitacion, true)">Aceptar</button>
+                <button class="btn btn-outline-light btn-sm flex-fill" @onclick="() => ResponderAsync(invitacion, false)">Rechazar</button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<InvitacionTableroDto>? _invitaciones;
+    private string? _error;
+    private string? _aviso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resultado = await MiembroServicio.ListarRecibidasAsync();
+        _error = resultado.Error;
+        _invitaciones = resultado.Datos ?? new();
+    }
+
+    private async Task ResponderAsync(InvitacionTableroDto invitacion, bool aceptar)
+    {
+        var resultado = aceptar
+            ? await MiembroServicio.AceptarAsync(invitacion.InvitacionTableroId)
+            : await MiembroServicio.RechazarAsync(invitacion.InvitacionTableroId);
+
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _invitaciones!.Remove(invitacion);
+            _aviso = aceptar ? $"Ahora sos miembro de \"{invitacion.TableroNombre}\"." : "Invitación rechazada.";
+        }
+    }
+}

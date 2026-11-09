@@ -1,0 +1,55 @@
+@page "/login"
+@layout LayoutPublico
+@inject AutenticacionServicio Autenticacion
+@inject NavigationManager Navegacion
+
+<div class="text-center pt-5 mt-4 mb-4">
+    <div class="marca">Boardy</div>
+    <h1 class="h5 mt-4 mb-1">Iniciar sesión</h1>
+    <p class="text-muted small">Ingresá tu correo y contraseña para continuar</p>
+</div>
+
+<EditForm Model="_modelo" OnValidSubmit="IngresarAsync">
+    <DataAnnotationsValidator />
+    <MensajeError Texto="@_error" />
+
+    <div class="mb-3">
+        <InputText class="form-control" type="email" placeholder="email@dominio.com" @bind-Value="_modelo.Email" autocomplete="username" />
+        <ValidationMessage For="() => _modelo.Email" />
+    </div>
+    <div class="mb-3">
+        <InputText class="form-control" type="password" placeholder="Contraseña" @bind-Value="_modelo.Contrasena" autocomplete="current-password" />
+        <ValidationMessage For="() => _modelo.Contrasena" />
+    </div>
+
+    <button class="btn btn-primary w-100" type="submit" disabled="@_enviando">
+        @(_enviando ? "Ingresando..." : "Iniciar sesión")
+    </button>
+</EditForm>
+
+<p class="text-center mt-4 text-muted">
+    ¿No tenés cuenta? <a href="registro">Registrate</a>
+</p>
+
+@code {
+    private readonly IniciarSesionDto _modelo = new();
+    private string? _error;
+    private bool _enviando;
+
+    private async Task IngresarAsync()
+    {
+        _enviando = true;
+        _error = null;
+
+        var resultado = await Autenticacion.IniciarSesionAsync(_modelo);
+
+        _enviando = false;
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo("tableros", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+}

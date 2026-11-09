@@ -1,0 +1,63 @@
+@page "/admin/usuarios"
+@inject UsuarioServicio UsuarioServicio
+@inject SesionServicio Sesion
+
+<Encabezado Titulo="Gestión de usuarios" />
+
+<input class="form-control mb-3" placeholder="Buscar usuarios" @bind="_busqueda" @bind:event="oninput" />
+
+<MensajeError Texto="@_error" />
+
+@if (_usuarios is null)
+{
+    @if (_error is null)
+    {
+        <div class="cargando"><div class="spinner-border text-primary"></div></div>
+    }
+}
+else
+{
+    @foreach (var usuario in Filtrados)
+    {
+        <a class="tarjeta text-reset text-decoration-none" href="admin/usuarios/@usuario.UsuarioId">
+            <Avatar Nombre="@usuario.NombreCompleto" Foto="@usuario.FotoPerfil" Tamano="42" />
+            <div class="tarjeta-cuerpo">
+                <p class="tarjeta-titulo recortar">
+                    @usuario.NombreCompleto
+                    @if (usuario.UsuarioId == Sesion.Usuario?.UsuarioId)
+                    {
+                        <span class="text-muted small">(Vos)</span>
+                    }
+                </p>
+                <p class="tarjeta-sub recortar">@usuario.Email</p>
+            </div>
+            @if (usuario.EsAdministrador)
+            {
+                <span class="etiqueta" style="background:#3d5f99">Admin</span>
+            }
+            @if (!usuario.Activo)
+            {
+                <span class="etiqueta" style="background:#6b3a3a">Inactivo</span>
+            }
+        </a>
+    }
+}
+
+<a class="boton-flotante" href="admin/usuarios/nuevo" aria-label="Dar de alta usuario"><Icono Nombre="mas" Tamano="26" /></a>
+
+@code {
+    private List<UsuarioAdministracionDto>? _usuarios;
+    private string _busqueda = string.Empty;
+    private string? _error;
+
+    private IEnumerable<UsuarioAdministracionDto> Filtrados => (_usuarios ?? new()).Where(u =>
+        u.NombreCompleto.Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+        || u.Email.Contains(_busqueda, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resultado = await UsuarioServicio.ListarAsync();
+        _error = resultado.Error;
+        _usuarios = resultado.Datos;
+    }
+}

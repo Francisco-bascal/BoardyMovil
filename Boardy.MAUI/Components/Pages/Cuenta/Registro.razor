@@ -1,0 +1,33 @@
+@page "/registro"
+@layout LayoutPublico
+@inject AutenticacionServicio Autenticacion
+@inject NavigationManager Navegacion
+
+<Encabezado Titulo="Crear cuenta" Volver="login" />
+
+<p class="text-muted small">Completá tus datos para registrarte en Boardy.</p>
+
+<FormularioUsuario Modelo="_modelo" TextoBoton="Registrarme" Error="@_error" Enviando="_enviando" AlEnviar="RegistrarAsync" />
+
+@code {
+    private readonly RegistrarUsuarioDto _modelo = new();
+    private string? _error;
+    private bool _enviando;
+
+    private async Task RegistrarAsync()
+    {
+        _enviando = true;
+        _error = null;
+
+        var resultado = await Autenticacion.RegistrarAsync(_modelo);
+
+        _enviando = false;
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo("tableros", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+}

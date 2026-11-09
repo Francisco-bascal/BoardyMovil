@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Fotos de perfil subidas al backend en desarrollo
+Boardy.Backend/wwwroot/uploads/*
+!Boardy.Backend/wwwroot/uploads/.gitkeep

@@ -1,0 +1,133 @@
+@page "/tableros/{TableroId:int}"
+@inject TableroServicio TableroServicio
+@inject TareaServicio TareaServicio
+
+<Encabezado Titulo="@(_tablero?.Nombre ?? "Tablero")" Volver="tableros">
+    @if (_tablero is not null)
+    {
+        <a class="boton-icono" href="tableros/@TableroId/miembros" aria-label="Equipo"><Icono Nombre="equipo" Tamano="20" /></a>
+        @if (PuedeAdministrar)
+        {
+            <a class="boton-icono" href="tableros/@TableroId/editar" aria-label="Editar tablero"><Icono Nombre="editar" Tamano="20" /></a>
+        }
+    }
+</Encabezado>
+
+<MensajeError Texto="@_error" />
+
+@if (_tablero is null || _listas is null || _tareas is null)
+{
+    @if (_error is null)
+    {
+        <div class="cargando"><div class="spinner-border text-primary"></div></div>
+    }
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_tablero.Descripcion))
+    {
+        <p class="text-muted small mb-3">@_tablero.Descripcion</p>
+    }
+
+    <div class="chips mb-3">
+        @foreach (var lista in _listas)
+        {
+            <button class="chip @(lista.ListaTareaId == _listaSeleccionadaId ? "activo" : "")" @onclick="() => _listaSeleccionadaId = lista.ListaTareaId">
+                @lista.Nombre (@_tareas.Count(t => t.ListaTareaId == lista.ListaTareaId))
+            </button>
+        }
+        @if (PuedeAdministrar)
+        {
+            <a class="chip text-decoration-none" href="tableros/@TableroId/listas/nueva">+ Lista</a>
+        }
+    </div>
+
+    @if (_listas.Count == 0)
+    {
+        <p class="vacio">El tablero todavía no tiene listas.</p>
+    }
+    else
+    {
+        @if (PuedeAdministrar && ListaSeleccionada is not null)
+        {
+            <div class="d-flex gap-2 mb-3">
+                <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/listas/@ListaSeleccionada.ListaTareaId/editar">Editar lista</a>
+                <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/etiquetas">Etiquetas</a>
+            </div>
+        }
+
+        @if (!TareasDeLista.Any())
+        {
+            <p class="vacio">No hay tareas en esta lista.</p>
+        }
+
+        @foreach (var tarea in TareasDeLista)
+        {
+            <a class="tarjeta text-reset text-decoration-none" href="tareas/@tarea.TareaId">
+                <div class="tarjeta-cuerpo">
+                    <p class="tarjeta-titulo recortar">@tarea.Titulo</p>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                        <span class="etiqueta prioridad-@tarea.Prioridad">@tarea.Prioridad</span>
+                        @if (tarea.FechaVencimiento is { } vence)
+                        {
+                            <span class="tarjeta-sub m-0">Vence @vence.ToString("dd/MM")</span>
+                        }
+                        @foreach (var etiqueta in tarea.Etiquetas)
+                        {
+                            <span class="etiqueta" style="background:@etiqueta.Color">@etiqueta.Nombre</span>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex">
+                    @foreach (var miembro in tarea.Miembros.Take(3))
+                    {
+                        <span style="margin-left:-8px"><Avatar Nombre="@miembro.NombreCompleto" Foto="@miembro.FotoPerfil" Tamano="30" /></span>
+                    }
+                </div>
+            </a>
+        }
+
+        @if (PuedeAdministrar && ListaSeleccionada is not null)
+        {
+            <a class="boton-flotante" href="listas/@ListaSeleccionada.ListaTareaId/tareas/nueva?tableroId=@TableroId" aria-label="Nueva tarea">
+                <Icono Nombre="mas" Tamano="26" />
+            </a>
+        }
+    }
+}
+
+@code {
+    [Parameter] public int TableroId { get; set; }
+
+    private TableroDetalleDto? _tablero;
+    private List<ListaTareaDto>? _listas;
+    private List<TareaDto>? _tareas;
+    private int? _listaSeleccionadaId;
+    private string? _error;
+
+    private bool PuedeAdministrar => _tablero is not null && PermisosTablero.PuedeAdministrar(_tablero.RolUsuario);
+
+    private ListaTareaDto? ListaSeleccionada => _listas?.FirstOrDefault(l => l.ListaTareaId == _listaSeleccionadaId);
+
+    private IEnumerable<TareaDto> TareasDeLista => (_tareas ?? new())
+        .Where(t => t.ListaTareaId == _listaSeleccionadaId)
+        .OrderBy(t => t.Orden);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Las tres consultas viajan en paralelo.
+        var consultaTablero = TableroServicio.ObtenerAsync(TableroId);
+        var consultaListas = TableroServicio.ListarListasAsync(TableroId);
+        var consultaTareas = TareaServicio.ListarPorTableroAsync(TableroId);
+
+        var tablero = await consultaTablero;
+        var listas = await consultaListas;
+        var tareas = await consultaTareas;
+
+        _error = tablero.Error ?? listas.Error ?? tareas.Error;
+        _tablero = tablero.Datos;
+        _listas = listas.Datos?.OrderBy(l => l.Orden).ToList();
+        _tareas = tareas.Datos;
+        _listaSeleccionadaId ??= _listas?.FirstOrDefault()?.ListaTareaId;
+    }
+}

@@ -1,17 +1,38 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject SesionServicio Sesion
+@inject NavigationManager Navegacion
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+@if (Sesion.Activa)
+{
+    <div class="app">
+        @Body
     </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+    <BarraInferior />
+}
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+@code {
+    protected override void OnInitialized()
+    {
+        Sesion.Cambio += AlCambiarSesion;
+        RedirigirSiNoHaySesion();
+    }
+
+    private void AlCambiarSesion()
+    {
+        RedirigirSiNoHaySesion();
+        InvokeAsync(StateHasChanged);
+    }
+
+    // Toda pantalla con este layout requiere sesión iniciada.
+    private void RedirigirSiNoHaySesion()
+    {
+        if (!Sesion.Activa)
+        {
+            Navegacion.NavigateTo("login", replace: true);
+        }
+    }
+
+    public void Dispose() => Sesion.Cambio -= AlCambiarSesion;
+}

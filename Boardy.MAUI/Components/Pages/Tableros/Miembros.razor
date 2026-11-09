@@ -1,0 +1,193 @@
+@page "/tableros/{TableroId:int}/miembros"
+@inject MiembroServicio MiembroServicio
+@inject TableroServicio TableroServicio
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="Equipo del tablero" Volver="@($"tableros/{TableroId}")" />
+
+<MensajeError Texto="@_error" />
+@if (_aviso is not null)
+{
+    <div class="alert alert-success py-2">@_aviso</div>
+}
+
+@if (_miembros is null)
+{
+    <div class="cargando"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="seccion">
+        <h2>Miembros (@_miembros.Count)</h2>
+        @foreach (var miembro in _miembros)
+        {
+            var rol = miembro.Roles.FirstOrDefault()?.Nombre ?? string.Empty;
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <Avatar Nombre="@miembro.NombreCompleto" Foto="@miembro.FotoPerfil" Tamano="38" />
+                <div class="flex-fill" style="min-width:0">
+                    <div class="recortar">@miembro.NombreCompleto</div>
+                    <div class="tarjeta-sub recortar">@miembro.Email</div>
+                </div>
+                @if (PuedeAdministrar && !miembro.EsPropietario)
+                {
+                    <select class="form-select form-select-sm" style="width:auto" value="@miembro.Roles.FirstOrDefault()?.RolMiembroId"
+                            @onchange="e => CambiarRolAsync(miembro, e)">
+                        @foreach (var opcion in RolesAsignables)
+                        {
+                            <option value="@opcion.RolMiembroId">@opcion.Nombre</option>
+                        }
+                    </select>
+                }
+                else
+                {
+                    <span class="etiqueta" style="background:var(--superficie-alta)">@rol</span>
+                }
+            </div>
+            @if (PuedeAdministrar && !miembro.EsPropietario)
+            {
+                <div class="d-flex gap-2 mb-3 ms-5">
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => QuitarAsync(miembro)">Quitar</button>
+                    @if (PuedeGestionar && rol == PermisosTablero.Administrador)
+                    {
+                        <button class="btn btn-sm btn-outline-light" @onclick="() => TransferirAsync(miembro)">Hacer propietario</button>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    @if (PuedeAdministrar)
+    {
+        <div class="seccion">
+            <h2>Invitar usuarios</h2>
+            <input class="form-control mb-2" placeholder="Buscar por nombre o correo" @bind="_busqueda" @bind:event="oninput" @bind:after="BuscarAsync" />
+            @foreach (var usuario in _resultados)
+            {
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <Avatar Nombre="@usuario.NombreCompleto" Foto="@usuario.FotoPerfil" Tamano="34" />
+                    <div class="flex-fill" style="min-width:0">
+                        <div class="recortar">@usuario.NombreCompleto</div>
+                        <div class="tarjeta-sub recortar">@usuario.Email</div>
+                    </div>
+                    @if (_miembros.Any(m => m.UsuarioId == usuario.UsuarioId))
+                    {
+                        <span class="text-muted small">Miembro</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-primary" @onclick="() => InvitarAsync(usuario)">Invitar</button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="seccion">
+            <h2>Invitaciones pendientes</h2>
+            @if (!InvitacionesPendientes.Any())
+            {
+                <p class="text-muted small mb-0">No hay invitaciones pendientes.</p>
+            }
+            @foreach (var invitacion in InvitacionesPendientes)
+            {
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="flex-fill recortar">@invitacion.UsuarioInvitadoNombre</span>
+                    <button class="btn btn-sm btn-outline-light" @onclick="() => CancelarAsync(invitacion.InvitacionTableroId)">Cancelar</button>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int TableroId { get; set; }
+
+    private List<TableroMiembroDto>? _miembros;
+    private List<RolMiembroDto> _roles = new();
+    private List<InvitacionTableroDto> _invitaciones = new();
+    private List<UsuarioBusquedaDto> _resultados = new();
+    private string _rolUsuario = string.Empty;
+    private string _busqueda = string.Empty;
+    private string? _error;
+    private string? _aviso;
+
+    private bool PuedeAdministrar => PermisosTablero.PuedeAdministrar(_rolUsuario);
+
+    private bool PuedeGestionar => PermisosTablero.PuedeGestionar(_rolUsuario);
+
+    // El rol Propietario solo se obtiene por transferencia.
+    private IEnumerable<RolMiembroDto> RolesAsignables => _roles.Where(r => r.Nombre != PermisosTablero.Propietario);
+
+    private IEnumerable<InvitacionTableroDto> InvitacionesPendientes => _invitaciones.Where(i => i.Estado == EstadoInvitacion.Pendiente);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tablero = await TableroServicio.ObtenerAsync(TableroId);
+        _rolUsuario = tablero.Datos?.RolUsuario ?? string.Empty;
+        _roles = (await TableroServicio.ListarRolesAsync()).Datos ?? new();
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        var miembros = await MiembroServicio.ListarAsync(TableroId);
+        _error = miembros.Error;
+        _miembros = miembros.Datos ?? new();
+
+        if (PuedeAdministrar)
+        {
+            _invitaciones = (await MiembroServicio.ListarInvitacionesDelTableroAsync(TableroId)).Datos ?? new();
+        }
+    }
+
+    private async Task BuscarAsync()
+    {
+        var resultado = await MiembroServicio.BuscarUsuariosAsync(_busqueda);
+        _resultados = resultado.Datos ?? new();
+    }
+
+    private async Task InvitarAsync(UsuarioBusquedaDto usuario)
+    {
+        var resultado = await MiembroServicio.InvitarAsync(TableroId, new CrearInvitacionDto { Email = usuario.Email });
+        await Informar(resultado, $"Invitación enviada a {usuario.NombreCompleto}.");
+    }
+
+    private async Task CambiarRolAsync(TableroMiembroDto miembro, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var rolId))
+        {
+            await Informar(await MiembroServicio.CambiarRolAsync(TableroId, miembro.TableroMiembroId, rolId), "Rol actualizado.");
+        }
+    }
+
+    private async Task QuitarAsync(TableroMiembroDto miembro)
+    {
+        if (await Dialogo.ConfirmarAsync($"¿Quitar a {miembro.NombreCompleto} del tablero?", "Quitar"))
+        {
+            await Informar(await MiembroServicio.QuitarAsync(TableroId, miembro.TableroMiembroId), "Miembro quitado.");
+        }
+    }
+
+    private async Task TransferirAsync(TableroMiembroDto miembro)
+    {
+        if (await Dialogo.ConfirmarAsync($"¿Transferir la propiedad a {miembro.NombreCompleto}? Vas a pasar a ser Administrador.", "Transferir"))
+        {
+            var resultado = await MiembroServicio.TransferirPropiedadAsync(TableroId, miembro.TableroMiembroId);
+            if (resultado.Exito)
+            {
+                _rolUsuario = PermisosTablero.Administrador;
+            }
+
+            await Informar(resultado, "Propiedad transferida.");
+        }
+    }
+
+    private async Task CancelarAsync(int invitacionId) =>
+        await Informar(await MiembroServicio.CancelarAsync(invitacionId), "Invitación cancelada.");
+
+    private async Task Informar(ResultadoApi resultado, string aviso)
+    {
+        _error = resultado.Error;
+        _aviso = resultado.Exito ? aviso : null;
+        await CargarAsync();
+    }
+}

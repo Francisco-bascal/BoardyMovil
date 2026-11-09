@@ -1,0 +1,31 @@
+using Boardy.Backend.Comun;
+using Boardy.Backend.DTOs;
+
+namespace Boardy.Backend.Services
+{
+    public interface ITareaService
+    {
+        Task<IReadOnlyList<TareaDto>> ListarPorTableroAsync(int tableroId, CancellationToken cancellationToken = default);
+
+        /// <summary>Tareas no finalizadas asignadas al usuario, en todos sus tableros.</summary>
+        Task<IReadOnlyList<TareaDto>> ListarAsignadasAsync(string usuarioId, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> ObtenerAsync(int tareaId, CancellationToken cancellationToken = default);
+
+        Task<int?> ObtenerTableroIdAsync(int tareaId, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> CrearAsync(int listaTareaId, CrearTareaDto dto, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> ActualizarAsync(int tareaId, ActualizarTareaDto dto, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> MoverAsync(int tareaId, MoverTareaDto dto, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> CambiarEstadoAsync(int tareaId, CambiarEstadoTareaDto dto, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> AsignarMiembroAsync(int tareaId, int tableroMiembroId, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion<TareaDto>> QuitarMiembroAsync(int tareaId, int tableroMiembroId, CancellationToken cancellationToken = default);
+
+        Task<ResultadoOperacion> EliminarAsync(int tareaId, CancellationToken cancellationToken = default);
+    }
+}

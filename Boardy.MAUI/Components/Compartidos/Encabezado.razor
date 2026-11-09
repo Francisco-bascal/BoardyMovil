@@ -1,0 +1,18 @@
+<header class="encabezado">
+    @if (Volver is not null)
+    {
+        <a class="boton-icono" href="@Volver" aria-label="Volver"><Icono Nombre="volver" Tamano="20" /></a>
+    }
+    <h1 class="recortar">@Titulo</h1>
+    @ChildContent
+</header>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = string.Empty;
+
+    /// <summary>Ruta a la que vuelve la flecha; sin valor, no se muestra.</summary>
+    [Parameter] public string? Volver { get; set; }
+
+    /// <summary>Acciones a la derecha del título.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,28 @@
+@page "/admin/usuarios/nuevo"
+@inject UsuarioServicio UsuarioServicio
+@inject NavigationManager Navegacion
+
+<Encabezado Titulo="Dar de alta usuario" Volver="admin/usuarios" />
+
+<FormularioUsuario Modelo="_modelo" TextoBoton="Dar de alta" Error="@_error" Enviando="_enviando" AlEnviar="CrearAsync" />
+
+@code {
+    private readonly RegistrarUsuarioDto _modelo = new();
+    private string? _error;
+    private bool _enviando;
+
+    private async Task CrearAsync()
+    {
+        _enviando = true;
+        var resultado = await UsuarioServicio.CrearAsync(_modelo);
+        _enviando = false;
+
+        if (resultado.Exito)
+        {
+            Navegacion.NavigateTo("admin/usuarios", replace: true);
+            return;
+        }
+
+        _error = resultado.Error;
+    }
+}
