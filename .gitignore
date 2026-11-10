@@ -364,3 +364,6 @@ FodyWeavers.xsd
 # Fotos de perfil subidas al backend en desarrollo
 Boardy.Backend/wwwroot/uploads/*
 !Boardy.Backend/wwwroot/uploads/.gitkeep
+
+# Configuración por entorno (claves, cadenas de conexión): nunca al repositorio
+**/appsettings*.json
