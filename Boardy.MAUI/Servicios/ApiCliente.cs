@@ -70,13 +70,18 @@ namespace Boardy.MAUI.Servicios
             {
                 respuesta = await _http.SendAsync(solicitud);
             }
-            catch (HttpRequestException)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                return ResultadoApi<T>.Fallo("No se pudo conectar con el servidor. Revisá tu conexión.");
-            }
-            catch (TaskCanceledException)
-            {
-                return ResultadoApi<T>.Fallo("El servidor tardó demasiado en responder.");
+                const string sinConexion = "No se pudo conectar con el servidor. Revisá tu conexión o cambiá la URL del servidor.";
+
+                // Con sesión iniciada se vuelve al login, que es donde se puede cambiar la URL.
+                // shortcut: un solo corte (o una respuesta que supera el timeout) ya cierra la sesión; si molesta, contar fallos seguidos.
+                if (_sesion.Token is not null)
+                {
+                    _sesion.Cerrar(sinConexion);
+                }
+
+                return ResultadoApi<T>.Fallo(sinConexion);
             }
 
             using (respuesta)
@@ -91,8 +96,9 @@ namespace Boardy.MAUI.Servicios
 
                 if (respuesta.StatusCode == HttpStatusCode.Unauthorized && _sesion.Token is not null)
                 {
-                    _sesion.Cerrar();
-                    return ResultadoApi<T>.Fallo("Tu sesión venció. Iniciá sesión de nuevo.");
+                    const string sesionVencida = "Tu sesión venció. Iniciá sesión de nuevo.";
+                    _sesion.Cerrar(sesionVencida);
+                    return ResultadoApi<T>.Fallo(sesionVencida);
                 }
 
                 return ResultadoApi<T>.Fallo(await LeerErrorAsync(respuesta));

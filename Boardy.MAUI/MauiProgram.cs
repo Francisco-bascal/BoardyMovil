@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using Boardy.MAUI.Servicios;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +21,8 @@ namespace Boardy.MAUI
             builder.Services.AddSingleton<SesionServicio>();
             builder.Services.AddSingleton(new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(20),
+                // Breve: si el backend no responde en este tiempo, la app vuelve al login.
+                Timeout = TimeSpan.FromSeconds(10),
                 // Sin esto, ASP.NET Core devuelve los string como texto plano en lugar de JSON.
                 DefaultRequestHeaders = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
             });

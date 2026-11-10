@@ -46,8 +46,12 @@ namespace Boardy.MAUI.Servicios
             Cambio?.Invoke();
         }
 
-        public void Cerrar()
+        /// <summary>Por qué se cerró la sesión sin que el usuario lo pidiera; el login lo muestra una vez.</summary>
+        public string? MotivoCierre { get; set; }
+
+        public void Cerrar(string? motivo = null)
         {
+            MotivoCierre = motivo;
             _sesion = null;
             SecureStorage.Default.Remove(ClaveSesion);
             Cambio?.Invoke();

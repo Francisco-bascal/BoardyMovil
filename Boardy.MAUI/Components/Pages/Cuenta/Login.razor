@@ -1,6 +1,7 @@
 @page "/login"
 @layout LayoutPublico
 @inject AutenticacionServicio Autenticacion
+@inject SesionServicio Sesion
 @inject NavigationManager Navegacion
 
 <div class="text-center pt-5 mt-4 mb-4">
@@ -40,6 +41,13 @@
 @code {
     private readonly IniciarSesionDto _modelo = new();
     private string? _error;
+
+    // Si se llegó acá porque la sesión se cortó (servidor caído, token vencido), se explica el motivo.
+    protected override void OnInitialized()
+    {
+        _error = Sesion.MotivoCierre;
+        Sesion.MotivoCierre = null;
+    }
     private bool _enviando;
 
     private async Task IngresarAsync()
