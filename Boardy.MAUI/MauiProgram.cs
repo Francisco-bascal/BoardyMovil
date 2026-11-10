@@ -21,7 +21,6 @@ namespace Boardy.MAUI
             builder.Services.AddSingleton<SesionServicio>();
             builder.Services.AddSingleton(new HttpClient
             {
-                BaseAddress = new Uri(ConfiguracionApi.UrlBase),
                 Timeout = TimeSpan.FromSeconds(20),
                 // Sin esto, ASP.NET Core devuelve los string como texto plano en lugar de JSON.
                 DefaultRequestHeaders = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }

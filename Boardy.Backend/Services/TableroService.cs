@@ -87,22 +87,17 @@ namespace Boardy.Backend.Services
                 EsKanban = dto.EsKanban
             };
 
+            // Regla de estados base: todo tablero nace con Pendiente, En progreso y Finalizada.
+            var estadosBase = EstadoTareaService.CrearEstadosBase();
+            estadosBase.ForEach(tablero.Estados.Add);
+
             if (dto.EsKanban)
             {
-                var estados = await _context.EstadoTareas
-                    .Where(e => EstadosTareaSistema.Todos.Contains(e.Nombre))
-                    .ToDictionaryAsync(e => e.Nombre, e => e.EstadoTareaId, cancellationToken);
-
-                // Regla de esquema Kanban: arranca con una lista por cada estado del sistema.
-                if (estados.Count != EstadosTareaSistema.Todos.Length)
-                {
-                    return ResultadoOperacion<TableroDto>.Fallo("No están configurados los estados de tarea de Kanban.");
-                }
-
+                // Regla de esquema Kanban: arranca con una lista por cada estado base.
                 var orden = 1;
-                foreach (var nombre in EstadosTareaSistema.Todos)
+                foreach (var estado in estadosBase)
                 {
-                    tablero.ListasTarea.Add(new ListaTarea { Nombre = nombre, Orden = orden++, EstadoTareaId = estados[nombre] });
+                    tablero.ListasTarea.Add(new ListaTarea { Nombre = estado.Nombre, Orden = orden++, EstadoTarea = estado });
                 }
             }
 
@@ -152,9 +147,14 @@ namespace Boardy.Backend.Services
                 return ResultadoOperacion.NoExiste("El tablero no existe.");
             }
 
-            // Listas, tareas, miembros, etiquetas e invitaciones se eliminan en cascada en la base de datos.
+            // Las listas (y en cascada sus tareas) se borran antes que los estados que esas tareas usan;
+            // miembros, etiquetas e invitaciones caen en cascada con el tablero.
+            await using var transaccion = await _context.Database.BeginTransactionAsync(cancellationToken);
+            await _context.ListaTareas.Where(l => l.TableroId == tableroId).ExecuteDeleteAsync(cancellationToken);
+            await _context.EstadoTareas.Where(e => e.TableroId == tableroId).ExecuteDeleteAsync(cancellationToken);
             _context.Tableros.Remove(tablero);
             await _context.SaveChangesAsync(cancellationToken);
+            await transaccion.CommitAsync(cancellationToken);
 
             return ResultadoOperacion.Exitoso("Tablero eliminado correctamente.");
         }

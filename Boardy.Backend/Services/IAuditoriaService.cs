@@ -1,3 +1,6 @@
+using Boardy.Backend.Comun;
+using Boardy.Backend.DTOs;
+
 namespace Boardy.Backend.Services
 {
     public interface IAuditoriaService
@@ -7,5 +10,8 @@ namespace Boardy.Backend.Services
         /// operación, de modo que la acción y su registro quedan en la misma transacción.
         /// </summary>
         void Registrar(int tableroId, string accion);
+
+        /// <summary>Acciones del tablero, de la más reciente a la más antigua; opcionalmente de un solo usuario.</summary>
+        Task<Pagina<RegistroAuditoriaDto>> ListarAsync(int tableroId, string? usuarioId, int pagina, CancellationToken cancellationToken = default);
     }
 }

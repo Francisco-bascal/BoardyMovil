@@ -4,6 +4,7 @@
 @inject NavigationManager Navegacion
 
 <div class="text-center pt-5 mt-4 mb-4">
+    <img src="logo.svg" alt="" width="110" height="110" style="margin:-20px 0 -14px" />
     <div class="marca">Boardy</div>
     <h1 class="h5 mt-4 mb-1">Iniciar sesión</h1>
     <p class="text-muted small">Ingresá tu correo y contraseña para continuar</p>
@@ -29,6 +30,11 @@
 
 <p class="text-center mt-4 text-muted">
     ¿No tenés cuenta? <a href="registro">Registrate</a>
+</p>
+
+<p class="text-center mt-5 small text-muted">
+    Servidor: @ConfiguracionApi.UrlBase<br />
+    <a href="servidor">Cambiar servidor</a>
 </p>
 
 @code {

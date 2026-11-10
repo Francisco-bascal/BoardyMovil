@@ -75,13 +75,19 @@ namespace Boardy.Backend.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("EsBase")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("TableroId")
+                        .HasColumnType("int");
+
                     b.HasKey("EstadoTareaId");
 
-                    b.HasIndex("Nombre")
+                    b.HasIndex("TableroId", "Nombre")
                         .IsUnique();
 
                     b.ToTable("EstadoTareas");
@@ -264,6 +270,39 @@ namespace Boardy.Backend.Migrations
                     b.HasIndex("TableroId", "Fecha");
 
                     b.ToTable("RegistrosAuditoria");
+                });
+
+            modelBuilder.Entity("Boardy.Backend.Models.RegistroError", b =>
+                {
+                    b.Property<int>("RegistroErrorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistroErrorId"));
+
+                    b.Property<string>("Detalle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mensaje")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Ruta")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UsuarioId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("RegistroErrorId");
+
+                    b.HasIndex("Fecha");
+
+                    b.ToTable("RegistrosError");
                 });
 
             modelBuilder.Entity("Boardy.Backend.Models.RolMiembro", b =>
@@ -708,6 +747,17 @@ namespace Boardy.Backend.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Boardy.Backend.Models.EstadoTarea", b =>
+                {
+                    b.HasOne("Boardy.Backend.Models.Tablero", "Tablero")
+                        .WithMany("Estados")
+                        .HasForeignKey("TableroId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Tablero");
+                });
+
             modelBuilder.Entity("Boardy.Backend.Models.Etiqueta", b =>
                 {
                     b.HasOne("Boardy.Backend.Models.Tablero", "Tablero")
@@ -964,6 +1014,8 @@ namespace Boardy.Backend.Migrations
 
             modelBuilder.Entity("Boardy.Backend.Models.Tablero", b =>
                 {
+                    b.Navigation("Estados");
+
                     b.Navigation("Etiquetas");
 
                     b.Navigation("Invitaciones");

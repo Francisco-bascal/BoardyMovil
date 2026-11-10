@@ -1,0 +1,44 @@
+@page "/tableros/{TableroId:int}/auditoria"
+@inject TableroServicio TableroServicio
+
+<Encabezado Titulo="Auditoría" Volver="@($"tableros/{TableroId}")" />
+
+<MensajeError Texto="@_error" />
+
+<ListaPaginada Registros="_registros" Total="_total" Cargando="_cargando" AlPedirMas="CargarAsync" TextoVacio="Todavía no hay acciones registradas.">
+    <Fila Context="registro">
+        <div class="tarjeta">
+            <div class="tarjeta-cuerpo">
+                <p class="mb-1">@registro.Accion</p>
+                <p class="tarjeta-sub">@registro.UsuarioNombre · @registro.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+    </Fila>
+</ListaPaginada>
+
+@code {
+    [Parameter] public int TableroId { get; set; }
+
+    private readonly List<RegistroAuditoriaDto> _registros = new();
+    private int _pagina;
+    private int _total;
+    private bool _cargando;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        _cargando = true;
+        var resultado = await TableroServicio.ListarAuditoriaAsync(TableroId, _pagina + 1);
+        _cargando = false;
+
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _pagina++;
+            _total = resultado.Datos!.TotalElementos;
+            _registros.AddRange(resultado.Datos.Elementos);
+        }
+    }
+}

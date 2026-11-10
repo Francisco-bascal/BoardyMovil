@@ -75,10 +75,10 @@ namespace Boardy.Backend.Services
             // Si la lista tiene estado (Kanban) manda la lista, no el formulario.
             var estadoTareaId = lista.EstadoTareaId ?? dto.EstadoTareaId;
 
-            // Regla de estado existente: el estado de la tarea debe estar en el catálogo.
-            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == estadoTareaId, cancellationToken))
+            // Regla de estado existente: el estado de la tarea debe pertenecer al mismo tablero.
+            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == estadoTareaId && e.TableroId == lista.TableroId, cancellationToken))
             {
-                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe.");
+                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe en el tablero.");
             }
 
             var ultimoOrden = await _context.Tareas
@@ -117,10 +117,10 @@ namespace Boardy.Backend.Services
             // Regla de estado Kanban: si la lista tiene estado, manda la lista y no el formulario.
             var estadoTareaId = tarea.ListaTarea.EstadoTareaId ?? dto.EstadoTareaId;
 
-            // Regla de estado existente: el estado de la tarea debe estar en el catálogo.
-            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == estadoTareaId, cancellationToken))
+            // Regla de estado existente: el estado de la tarea debe pertenecer al mismo tablero.
+            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == estadoTareaId && e.TableroId == tarea.ListaTarea.TableroId, cancellationToken))
             {
-                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe.");
+                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe en el tablero.");
             }
 
             tarea.Titulo = dto.Titulo.Trim();
@@ -215,10 +215,10 @@ namespace Boardy.Backend.Services
                     : await MoverAsync(tareaId, new MoverTareaDto { ListaTareaId = listaDestinoId.Value }, cancellationToken);
             }
 
-            // Regla de estado existente: el estado de la tarea debe estar en el catálogo.
-            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == dto.EstadoTareaId, cancellationToken))
+            // Regla de estado existente: el estado de la tarea debe pertenecer al mismo tablero.
+            if (!await _context.EstadoTareas.AnyAsync(e => e.EstadoTareaId == dto.EstadoTareaId && e.TableroId == tarea.ListaTarea.TableroId, cancellationToken))
             {
-                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe.");
+                return ResultadoOperacion<TareaDto>.Fallo(nameof(dto.EstadoTareaId), "El estado seleccionado no existe en el tablero.");
             }
 
             tarea.EstadoTareaId = dto.EstadoTareaId;

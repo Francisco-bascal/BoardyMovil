@@ -27,6 +27,7 @@ namespace Boardy.Backend.Data
         public DbSet<Etiqueta> Etiquetas { get; set; } = null!;
         public DbSet<TareaEtiqueta> TareaEtiquetas { get; set; } = null!;
         public DbSet<RegistroAuditoria> RegistrosAuditoria { get; set; } = null!;
+        public DbSet<RegistroError> RegistrosError { get; set; } = null!;
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -129,7 +130,9 @@ namespace Boardy.Backend.Data
             modelBuilder.Entity<EstadoTarea>(entity =>
             {
                 entity.HasKey(e => e.EstadoTareaId);
-                entity.HasIndex(e => e.Nombre).IsUnique();
+                entity.HasIndex(e => new { e.TableroId, e.Nombre }).IsUnique();
+                // NoAction: las listas y tareas ya llegan por cascada desde el tablero (SQL Server no admite rutas múltiples).
+                entity.HasOne(e => e.Tablero).WithMany(t => t.Estados).HasForeignKey(e => e.TableroId).OnDelete(DeleteBehavior.NoAction);
             });
 
             modelBuilder.Entity<TareaMiembro>(entity =>
@@ -153,6 +156,12 @@ namespace Boardy.Backend.Data
                 entity.HasIndex(r => new { r.TableroId, r.Fecha });
                 entity.HasOne(r => r.Tablero).WithMany().HasForeignKey(r => r.TableroId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne(r => r.Usuario).WithMany().HasForeignKey(r => r.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RegistroError>(entity =>
+            {
+                entity.HasKey(r => r.RegistroErrorId);
+                entity.HasIndex(r => r.Fecha);
             });
 
             modelBuilder.Entity<TareaEtiqueta>(entity =>

@@ -64,6 +64,11 @@
 <button class="btn btn-plata w-100 mb-3" @onclick="Autenticacion.CerrarSesion">Cerrar sesión</button>
 <button class="btn btn-outline-danger w-100" @onclick="EliminarCuentaAsync">Eliminar cuenta</button>
 
+<p class="text-center mt-4 small text-muted">
+    Servidor: @ConfiguracionApi.UrlBase<br />
+    <a href="servidor">Cambiar servidor</a>
+</p>
+
 @code {
     private const long TamanioMaximoFoto = 2 * 1024 * 1024;
 

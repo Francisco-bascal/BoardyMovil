@@ -1,0 +1,43 @@
+@page "/admin/errores"
+@inject UsuarioServicio UsuarioServicio
+
+<Encabezado Titulo="Log de errores" Volver="admin/usuarios" />
+
+<MensajeError Texto="@_error" />
+
+<ListaPaginada Registros="_registros" Total="_total" Cargando="_cargando" AlPedirMas="CargarAsync" TextoVacio="No hay errores registrados.">
+    <Fila Context="registro">
+        <details class="seccion">
+            <summary>
+                <span class="d-block">@registro.Mensaje</span>
+                <span class="tarjeta-sub">@registro.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @registro.Ruta</span>
+            </summary>
+            <pre class="small mt-2 mb-0 text-muted" style="white-space:pre-wrap">@registro.Detalle</pre>
+        </details>
+    </Fila>
+</ListaPaginada>
+
+@code {
+    private readonly List<RegistroErrorDto> _registros = new();
+    private int _pagina;
+    private int _total;
+    private bool _cargando;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        _cargando = true;
+        var resultado = await UsuarioServicio.ListarErroresAsync(_pagina + 1);
+        _cargando = false;
+
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            _pagina++;
+            _total = resultado.Datos!.TotalElementos;
+            _registros.AddRange(resultado.Datos.Elementos);
+        }
+    }
+}

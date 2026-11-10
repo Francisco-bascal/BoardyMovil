@@ -114,7 +114,7 @@
         }
         else
         {
-            _estados = (await TableroServicio.ListarEstadosAsync()).Datos ?? new();
+            _estados = (await TableroServicio.ListarEstadosAsync(_tableroId)).Datos ?? new();
         }
     }
 

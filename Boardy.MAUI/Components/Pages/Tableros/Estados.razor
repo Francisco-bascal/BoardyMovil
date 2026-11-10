@@ -1,0 +1,113 @@
+@page "/tableros/{TableroId:int}/estados"
+@inject TableroServicio TableroServicio
+@inject DialogoServicio Dialogo
+
+<Encabezado Titulo="Estados de tarea" Volver="@($"tableros/{TableroId}")" />
+
+<p class="text-muted small">Los estados base no se pueden modificar. Un estado propio solo se elimina si ninguna lista ni tarea lo usa.</p>
+
+<MensajeError Texto="@_error" />
+
+<div class="seccion">
+    <h2>@(_editandoId is null ? "Nuevo estado" : "Editar estado")</h2>
+    <EditForm Model="_formulario" OnValidSubmit="GuardarAsync">
+        <DataAnnotationsValidator />
+        <InputText class="form-control mb-2" placeholder="Nombre" @bind-Value="_formulario.Nombre" />
+        <ValidationMessage For="() => _formulario.Nombre" />
+        <InputText class="form-control mb-2" placeholder="Descripción (opcional)" @bind-Value="_formulario.Descripcion" />
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm" type="submit">@(_editandoId is null ? "Agregar" : "Guardar")</button>
+            @if (_editandoId is not null)
+            {
+                <button class="btn btn-outline-light btn-sm" type="button" @onclick="CancelarEdicion">Cancelar</button>
+            }
+        </div>
+    </EditForm>
+</div>
+
+@if (_estados is null)
+{
+    <div class="cargando"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @foreach (var estado in _estados)
+    {
+        <div class="tarjeta">
+            <div class="tarjeta-cuerpo">
+                <p class="tarjeta-titulo recortar">
+                    @estado.Nombre
+                    @if (estado.EsBase)
+                    {
+                        <span class="etiqueta ms-1" style="background:var(--superficie-alta)">Base</span>
+                    }
+                </p>
+                <p class="tarjeta-sub recortar">@estado.CantidadTareas tarea(s)@(string.IsNullOrEmpty(estado.Descripcion) ? "" : $" · {estado.Descripcion}")</p>
+            </div>
+            @if (!estado.EsBase)
+            {
+                <button class="btn btn-sm btn-outline-light" @onclick="() => Editar(estado)" aria-label="Editar"><Icono Nombre="editar" Tamano="16" /></button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarAsync(estado)" aria-label="Eliminar"><Icono Nombre="basura" Tamano="16" /></button>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int TableroId { get; set; }
+
+    private List<EstadoTareaDto>? _estados;
+    private ActualizarEstadoTareaDto _formulario = new();
+    private int? _editandoId;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        var resultado = await TableroServicio.ListarEstadosAsync(TableroId);
+        _error = resultado.Error;
+        _estados = resultado.Datos ?? new();
+    }
+
+    private void Editar(EstadoTareaDto estado)
+    {
+        _editandoId = estado.EstadoTareaId;
+        _formulario = new ActualizarEstadoTareaDto { Nombre = estado.Nombre, Descripcion = estado.Descripcion };
+    }
+
+    private void CancelarEdicion()
+    {
+        _editandoId = null;
+        _formulario = new();
+    }
+
+    private async Task GuardarAsync()
+    {
+        var resultado = _editandoId is null
+            ? await TableroServicio.CrearEstadoAsync(TableroId, _formulario)
+            : await TableroServicio.ActualizarEstadoAsync(_editandoId.Value, _formulario);
+
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            CancelarEdicion();
+            await CargarAsync();
+        }
+    }
+
+    private async Task EliminarAsync(EstadoTareaDto estado)
+    {
+        if (!await Dialogo.ConfirmarAsync($"¿Eliminar el estado \"{estado.Nombre}\"?", "Eliminar"))
+        {
+            return;
+        }
+
+        var resultado = await TableroServicio.EliminarEstadoAsync(estado.EstadoTareaId);
+        _error = resultado.Error;
+        if (resultado.Exito)
+        {
+            await CargarAsync();
+        }
+    }
+}

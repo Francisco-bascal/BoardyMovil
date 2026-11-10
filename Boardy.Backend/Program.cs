@@ -21,7 +21,11 @@ builder.Services.AddControllers(options =>
         options.ModelMetadataDetailsProviders.Add(new MensajesValidacionEsProvider());
         MensajesBindingEs.Aplicar(options.ModelBindingMessageProvider);
     })
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(new TextoNuloComoVacioConverter());
+    });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -111,6 +115,13 @@ builder.Services.AddScoped<IComentarioService, ComentarioService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IFotoPerfilService, FotoPerfilService>();
+builder.Services.AddScoped<IRegistroErrorService, RegistroErrorService>();
+
+// Log de errores: ILogger → cola en memoria → tabla RegistrosError.
+builder.Services.AddSingleton<ColaRegistroErrores>();
+builder.Services.AddSingleton<ILoggerProvider, BaseDatosLoggerProvider>();
+builder.Services.AddHostedService<GuardadoRegistroErroresService>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddHttpContextAccessor();
 
@@ -134,6 +145,9 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 await DbSeeder.SeedAsync(app.Services);
+
+// Las excepciones no controladas se registran como Error (y llegan a la tabla) y el cliente recibe un 500 sin detalles internos.
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

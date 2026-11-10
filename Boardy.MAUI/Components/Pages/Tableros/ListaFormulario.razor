@@ -72,7 +72,7 @@
         if (_esKanban)
         {
             // Solo los estados sin lista, más el de la lista que se está editando.
-            var estados = await TableroServicio.ListarEstadosAsync();
+            var estados = await TableroServicio.ListarEstadosAsync(TableroId);
             _estadosDisponibles = (estados.Datos ?? new())
                 .Where(e => !listas.Datos!.Any(l => l.EstadoTareaId == e.EstadoTareaId && l.ListaTareaId != ListaTareaId))
                 .ToList();

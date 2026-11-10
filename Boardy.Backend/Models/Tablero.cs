@@ -25,6 +25,8 @@ namespace Boardy.Backend.Models
 
         public ICollection<ListaTarea> ListasTarea { get; set; } = new List<ListaTarea>();
 
+        public ICollection<EstadoTarea> Estados { get; set; } = new List<EstadoTarea>();
+
         public ICollection<Etiqueta> Etiquetas { get; set; } = new List<Etiqueta>();
 
         public ICollection<TableroMiembro> Miembros { get; set; } = new List<TableroMiembro>();

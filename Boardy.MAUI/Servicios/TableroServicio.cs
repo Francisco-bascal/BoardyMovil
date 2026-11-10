@@ -2,7 +2,7 @@ using Boardy.MAUI.Modelos;
 
 namespace Boardy.MAUI.Servicios
 {
-    /// <summary>Tableros, sus listas, etiquetas y los catálogos globales.</summary>
+    /// <summary>Tableros, sus listas, estados, etiquetas y auditoría, y el catálogo de roles.</summary>
     public class TableroServicio
     {
         private readonly ApiCliente _api;
@@ -36,7 +36,16 @@ namespace Boardy.MAUI.Servicios
 
         public Task<ResultadoApi> EliminarEtiquetaAsync(int etiquetaId) => _api.DeleteAsync($"api/etiquetas/{etiquetaId}");
 
-        public Task<ResultadoApi<List<EstadoTareaDto>>> ListarEstadosAsync() => _api.GetAsync<List<EstadoTareaDto>>("api/catalogos/estados-tarea");
+        public Task<ResultadoApi<List<EstadoTareaDto>>> ListarEstadosAsync(int tableroId) => _api.GetAsync<List<EstadoTareaDto>>($"api/tableros/{tableroId}/estados");
+
+        public Task<ResultadoApi<EstadoTareaDto>> CrearEstadoAsync(int tableroId, CrearEstadoTareaDto dto) => _api.PostAsync<EstadoTareaDto>($"api/tableros/{tableroId}/estados", dto);
+
+        public Task<ResultadoApi<EstadoTareaDto>> ActualizarEstadoAsync(int estadoTareaId, ActualizarEstadoTareaDto dto) => _api.PutAsync<EstadoTareaDto>($"api/estados/{estadoTareaId}", dto);
+
+        public Task<ResultadoApi> EliminarEstadoAsync(int estadoTareaId) => _api.DeleteAsync($"api/estados/{estadoTareaId}");
+
+        public Task<ResultadoApi<Pagina<RegistroAuditoriaDto>>> ListarAuditoriaAsync(int tableroId, int pagina) =>
+            _api.GetAsync<Pagina<RegistroAuditoriaDto>>($"api/tableros/{tableroId}/auditoria?pagina={pagina}");
 
         public Task<ResultadoApi<List<RolMiembroDto>>> ListarRolesAsync() => _api.GetAsync<List<RolMiembroDto>>("api/catalogos/roles-miembro");
     }

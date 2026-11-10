@@ -206,7 +206,7 @@ else
         var tableroId = tarea.Datos!.TableroId;
         var consultaTablero = TableroServicio.ObtenerAsync(tableroId);
         var consultaListas = TableroServicio.ListarListasAsync(tableroId);
-        var consultaEstados = TableroServicio.ListarEstadosAsync();
+        var consultaEstados = TableroServicio.ListarEstadosAsync(tableroId);
         var consultaEtiquetas = TableroServicio.ListarEtiquetasAsync(tableroId);
         var consultaMiembros = MiembroServicio.ListarAsync(tableroId);
         var consultaComentarios = TareaServicio.ListarComentariosAsync(TareaId);

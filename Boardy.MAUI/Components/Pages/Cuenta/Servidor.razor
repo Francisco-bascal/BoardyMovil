@@ -1,0 +1,91 @@
+@page "/servidor"
+@layout LayoutPublico
+@inject HttpClient Http
+@inject SesionServicio Sesion
+@inject NavigationManager Navegacion
+
+<Encabezado Titulo="Servidor" Volver="login" />
+
+<p class="text-muted small">Dirección del backend de Boardy que usa la app. Cambiarla cierra la sesión actual.</p>
+
+<MensajeError Texto="@_error" />
+@if (_aviso is not null)
+{
+    <div class="alert alert-success py-2">@_aviso</div>
+}
+
+<div class="seccion">
+    <h2>Opciones rápidas</h2>
+    @foreach (var (nombre, url) in ConfiguracionApi.Predefinidas)
+    {
+        <button class="btn btn-outline-light btn-sm w-100 mb-2 text-start" @onclick="() => _url = url">
+            <div>@nombre</div>
+            <div class="tarjeta-sub">@url</div>
+        </button>
+    }
+</div>
+
+<div class="seccion">
+    <h2>URL del servidor</h2>
+    <input class="form-control mb-3" type="url" placeholder="https://api.midominio.com/" @bind="_url" />
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-light flex-fill" @onclick="ProbarAsync" disabled="@_probando">
+            @(_probando ? "Probando..." : "Probar conexión")
+        </button>
+        <button class="btn btn-primary flex-fill" @onclick="Guardar">Guardar</button>
+    </div>
+</div>
+
+@code {
+    private string _url = ConfiguracionApi.UrlBase;
+    private string? _error;
+    private string? _aviso;
+    private bool _probando;
+
+    private async Task ProbarAsync()
+    {
+        _error = _aviso = null;
+        if (!Uri.TryCreate(_url.Trim(), UriKind.Absolute, out var uri))
+        {
+            _error = "La URL no es válida.";
+            return;
+        }
+
+        _probando = true;
+        try
+        {
+            // Cualquier respuesta HTTP (incluso 401) confirma que el backend está ahí.
+            using var respuesta = await Http.GetAsync(new Uri(uri, "api/catalogos/estados-tarea"));
+            _aviso = "El servidor responde correctamente.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _error = "No se pudo conectar. Revisá la URL, que el backend esté levantado y la red.";
+        }
+        finally
+        {
+            _probando = false;
+        }
+    }
+
+    private void Guardar()
+    {
+        _error = _aviso = null;
+        var anterior = ConfiguracionApi.UrlBase;
+        var guardada = ConfiguracionApi.Guardar(_url);
+
+        if (guardada is null)
+        {
+            _error = "La URL debe empezar con http:// o https://.";
+            return;
+        }
+
+        // El token pertenece al servidor anterior.
+        if (guardada != anterior)
+        {
+            Sesion.Cerrar();
+        }
+
+        Navegacion.NavigateTo("login", replace: true);
+    }
+}

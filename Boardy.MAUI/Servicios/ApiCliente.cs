@@ -57,6 +57,9 @@ namespace Boardy.MAUI.Servicios
 
         private async Task<ResultadoApi<T>> EnviarAsync<T>(HttpRequestMessage solicitud)
         {
+            // La URL base se resuelve en cada llamada: puede cambiarse desde la pantalla "Servidor".
+            solicitud.RequestUri = new Uri(new Uri(ConfiguracionApi.UrlBase), solicitud.RequestUri!.OriginalString);
+
             if (_sesion.Token is not null)
             {
                 solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _sesion.Token);

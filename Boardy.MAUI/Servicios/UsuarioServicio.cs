@@ -62,6 +62,9 @@ namespace Boardy.MAUI.Servicios
 
         public Task<ResultadoApi> AlternarEstadoAsync(string usuarioId) => _api.PostAsync($"api/usuarios/{usuarioId}/alternar-estado");
 
+        public Task<ResultadoApi<Pagina<RegistroErrorDto>>> ListarErroresAsync(int pagina) =>
+            _api.GetAsync<Pagina<RegistroErrorDto>>($"api/plataforma/errores?pagina={pagina}");
+
         public Task<ResultadoApi> AlternarAdministradorAsync(string usuarioId) => _api.PostAsync($"api/usuarios/{usuarioId}/alternar-administrador");
     }
 }

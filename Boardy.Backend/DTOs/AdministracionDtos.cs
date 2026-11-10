@@ -41,4 +41,26 @@ namespace Boardy.Backend.DTOs
         [StringLength(100, MinimumLength = 6, ErrorMessage = "La contraseña debe tener entre {2} y {1} caracteres.")]
         public string? NuevaContrasena { get; set; }
     }
+
+    public class RegistroErrorDto
+    {
+        public string Mensaje { get; set; } = string.Empty;
+
+        public string Detalle { get; set; } = string.Empty;
+
+        public string Ruta { get; set; } = string.Empty;
+
+        public string? UsuarioId { get; set; }
+
+        public DateTime Fecha { get; set; }
+    }
+
+    public class RegistroAuditoriaDto
+    {
+        public string UsuarioNombre { get; set; } = string.Empty;
+
+        public string Accion { get; set; } = string.Empty;
+
+        public DateTime Fecha { get; set; }
+    }
 }
