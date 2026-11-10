@@ -38,7 +38,7 @@ else
         }
         @if (PuedeAdministrar)
         {
-            <a class="chip text-decoration-none" href="tableros/@TableroId/listas/nueva">+ Lista</a>
+            <a class="chip chip-neon text-decoration-none" href="tableros/@TableroId/listas/nueva">+ Lista</a>
         }
     </div>
 
@@ -51,7 +51,7 @@ else
         @if (PuedeAdministrar && ListaSeleccionada is not null)
         {
             <div class="d-flex gap-2 mb-3">
-                <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/listas/@ListaSeleccionada.ListaTareaId/editar">Editar lista</a>
+                <a class="btn btn-sm btn-neon" href="tableros/@TableroId/listas/@ListaSeleccionada.ListaTareaId/editar">Editar lista</a>
                 <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/etiquetas">Etiquetas</a>
                 <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/estados">Estados</a>
                 <a class="btn btn-sm btn-outline-light" href="tableros/@TableroId/auditoria">Auditoría</a>

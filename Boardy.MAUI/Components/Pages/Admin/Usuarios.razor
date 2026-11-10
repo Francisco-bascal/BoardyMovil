@@ -2,9 +2,7 @@
 @inject UsuarioServicio UsuarioServicio
 @inject SesionServicio Sesion
 
-<Encabezado Titulo="Gestión de usuarios">
-    <a class="btn btn-sm btn-outline-light" href="admin/errores">Log de errores</a>
-</Encabezado>
+<Encabezado Titulo="Gestión de usuarios" Volver="admin" />
 
 <input class="form-control mb-3" placeholder="Buscar usuarios" @bind="_busqueda" @bind:event="oninput" />
 

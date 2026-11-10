@@ -37,8 +37,8 @@ namespace Boardy.Backend.DTOs
         [EmailAddress(ErrorMessage = "El correo electrónico no es válido")]
         public string Email { get; set; } = string.Empty;
 
-        /// <summary>Si viene vacía, la contraseña no cambia.</summary>
-        [StringLength(100, MinimumLength = 6, ErrorMessage = "La contraseña debe tener entre {2} y {1} caracteres.")]
+        /// <summary>Si viene vacía, la contraseña no cambia (RegularExpression, a diferencia de StringLength, acepta el vacío).</summary>
+        [RegularExpression("^.{6,100}$", ErrorMessage = "La contraseña debe tener entre 6 y 100 caracteres.")]
         public string? NuevaContrasena { get; set; }
     }
 

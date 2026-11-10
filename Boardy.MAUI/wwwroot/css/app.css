@@ -1,4 +1,4 @@
-﻿/* Tema oscuro de Boardy sobre Bootstrap 5.1: azul marino con acentos plateados. */
+/* Tema oscuro de Boardy sobre Bootstrap 5.1: azul marino con acentos plateados. */
 :root {
     --fondo: #0b1626;
     --superficie: #12233a;
@@ -178,6 +178,23 @@ hr { border-color: var(--borde); opacity: 1; }
 .invalid { border-color: var(--peligro) !important; }
 
 /* ---------- Piezas de Boardy ---------- */
+.tarjeta-grande { padding: 22px 18px; }
+
+/* Acciones de lista destacadas: tono más claro con brillo neón azul. */
+.chip-neon, .btn-neon {
+    background: #2a4a7a;
+    border: 1px solid var(--acento-hover);
+    color: #e9f1ff;
+    box-shadow: 0 0 6px rgba(106, 162, 255, .55), 0 0 14px rgba(76, 141, 255, .3);
+    text-shadow: 0 0 6px rgba(106, 162, 255, .7);
+}
+
+.chip-neon:hover, .btn-neon:hover {
+    background: #335a92;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(106, 162, 255, .8), 0 0 20px rgba(76, 141, 255, .45);
+}
+
 .marca {
     font-size: 2.2rem;
     font-weight: 700;
